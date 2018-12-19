@@ -27,6 +27,7 @@ See more at https://blog.squix.org
 #include <Arduino.h>
 #include <SPI.h>
 #include <ESP8266WiFi.h>
+#include <ESP8266HTTPClient.h>
 
 #include <XPT2046_Touchscreen.h>
 #include "TouchControllerWS.h"
@@ -97,6 +98,7 @@ simpleDSTadjust dstAdjusted(StartRule, EndRule);
 Astronomy::MoonData moonData;
 
 void updateData();
+void updateVvsData();				 
 void drawProgress(uint8_t percentage, String text);
 void drawTime();
 void drawWifiQuality();
@@ -115,14 +117,19 @@ const char* getMiniMeteoconIconFromProgmem(String iconText);
 void drawForecast1(MiniGrafx *display, CarouselState* state, int16_t x, int16_t y);
 void drawForecast2(MiniGrafx *display, CarouselState* state, int16_t x, int16_t y);
 void drawForecast3(MiniGrafx *display, CarouselState* state, int16_t x, int16_t y);
-FrameCallback frames[] = { drawForecast1, drawForecast2, drawForecast3 };
-int frameCount = 3;
+void drawVvs(MiniGrafx *display, CarouselState* state, int16_t x, int16_t y);
+
+
+FrameCallback frames[] = { drawForecast1, drawVvs };
+int frameCount = 2;
 
 // how many different screens do we have?
 int screenCount = 5;
 long lastDownloadUpdate = millis();
+long lastVvsUpdate      = millis();								   
 
 String moonAgeImage = "";
+String payload = "";					
 uint8_t moonAge = 0;
 uint16_t screen = 0;
 long timerPress;
@@ -203,6 +210,7 @@ void setup() {
 
   // update the weather information
   updateData();
+  updateVvsData();				  
   timerPress = millis();
   canBtnPress = true;
 }
@@ -254,6 +262,11 @@ void loop() {
       lastDownloadUpdate = millis();
   }
 
+  // Check if we should update VVS information
+  if (millis() - lastVvsUpdate > 1000 * UPDATE_INTERVAL_SECS_VVS) {
+      updateVvsData();
+      lastVvsUpdate = millis();
+  }
   if (SLEEP_INTERVAL_SECS && millis() - timerPress >= SLEEP_INTERVAL_SECS * 1000){ // after 2 minutes go to sleep
     drawProgress(25,"Going to Sleep!");
     delay(1000);
@@ -312,6 +325,15 @@ void updateData() {
   delay(1000);
 }
 
+void updateVvsData() {
+      // get Data from VVS       
+      HTTPClient http;    //Declare object of class HTTPClient
+      http.begin("http://www2.vvs.de/vvsDM/XSLT_DM_REQUEST");      //Specify request destination
+      int    httpCode = http.POST("dmMacro=mini&name_dm=5006001&limit=5&line=vvs%3A10001%3A+%3AR%3Aj18&line=vvs%3A10002%3A+%3AR%3Aj18&line=vvs%3A10003%3A+%3AR%3Aj18&itdLPxx_depOnly=1&language=de");   //Send the request
+      payload = http.getString();                  //Get the response payload
+      http.end();  //Close connection    
+      Serial.println(" updateVvsData() ");      
+}					  
 // Progress bar helper
 void drawProgress(uint8_t percentage, String text) {
   gfx.fillBuffer(MINI_BLACK);
@@ -410,6 +432,56 @@ void drawForecast3(MiniGrafx *display, CarouselState* state, int16_t x, int16_t 
   drawForecastDetail(x + 180, y + 165, 8);
 }
 
+void drawVvs(MiniGrafx *display, CarouselState* state, int16_t x, int16_t y) {
+  gfx.setColor(MINI_WHITE);
+  gfx.setFont(ArialRoundedMTBold_14);
+  gfx.setTextAlignment(TEXT_ALIGN_LEFT);
+
+
+     String plannedTime;
+     String delayedTime;
+     String line;  
+     String destination;
+      
+     int    startLocation = 0, endLocation = 0;
+        
+     for (int i = 0;i<5;i++){
+        gfx.setColor(MINI_WHITE);
+        // img
+        startLocation = payload.indexOf("<td>", endLocation);
+        endLocation   = payload.indexOf("</td>", startLocation);
+        //plannedTime
+        startLocation = payload.indexOf("<td>", endLocation);
+        endLocation   = payload.indexOf("</td>", startLocation);       
+        plannedTime = payload.substring(startLocation + 4, endLocation);
+        //delayedTime
+        startLocation = payload.indexOf("<td class", endLocation);
+        endLocation   = payload.indexOf("</td>", startLocation);       
+        delayedTime = payload.substring(startLocation + 19, endLocation);     
+        //line
+        startLocation = payload.indexOf("<td class", endLocation);
+        endLocation   = payload.indexOf("</td>", startLocation);       
+        line = payload.substring(startLocation + 21, endLocation);   
+        // destination
+        startLocation = payload.indexOf("<td>", endLocation);
+        endLocation   = payload.indexOf("</td>", startLocation);         
+        destination = payload.substring(startLocation + 4, endLocation);   
+        // row
+        startLocation = payload.indexOf("<td>", endLocation);
+        endLocation   = payload.indexOf("</td>", startLocation);    
+        gfx.drawString(x + 10 ,y + 150 + (i*16) , line);
+        gfx.drawString(x + 35 ,y + 150 + (i*16) , plannedTime);  
+        gfx.drawString(x + 130 ,y + 150 + (i*16) , destination);  
+        gfx.setColor(MINI_YELLOW);        
+        gfx.drawString(x + 80 ,y + 150 + (i*16) , delayedTime);       
+
+     }
+                
+   //Serial.println(payload);    //Print request response payload
+ 
+
+   
+}
 // helper for the forecast columns
 void drawForecastDetail(uint16_t x, uint16_t y, uint8_t dayIndex) {
   gfx.setColor(MINI_YELLOW);

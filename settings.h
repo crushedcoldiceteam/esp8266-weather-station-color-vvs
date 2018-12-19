@@ -26,6 +26,8 @@ See more at http://blog.squix.ch
 #define WIFI_HOSTNAME "ThingPulse-weather-station-color"
 
 const int UPDATE_INTERVAL_SECS = 15 * 60; // Update every 10 minutes
+const int UPDATE_INTERVAL_SECS_VVS  =  30;      // Update every 30 seconds
+
 const int SLEEP_INTERVAL_SECS = 0;   // Going to Sleep after idle times, set 0 for dont sleep
 
 
@@ -38,8 +40,8 @@ result set and select the entry closest to the actual location you want to displ
 data for. It'll be a URL like https://openweathermap.org/city/2657896. The number
 at the end is what you assign to the constant below.
  */
-String OPEN_WEATHER_MAP_LOCATION_ID = "2657896";
-String DISPLAYED_CITY_NAME = "Zurich";
+String OPEN_WEATHER_MAP_LOCATION_ID = "2825297";
+String DISPLAYED_CITY_NAME = "Stuttgart";
 /*
 Arabic -> ar, Bulgarian -> bg, Catalan -> ca, Czech -> cz, German -> de, Greek -> el,
 English -> en, Persian (Farsi) -> fa, Finnish -> fi, French -> fr, Galician -> gl,
@@ -49,7 +51,7 @@ Portuguese -> pt, Romanian -> ro, Russian -> ru, Swedish -> se, Slovak -> sk,
 Slovenian -> sl, Spanish -> es, Turkish -> tr, Ukrainian -> ua, Vietnamese -> vi,
 Chinese Simplified -> zh_cn, Chinese Traditional -> zh_tw.
 */
-String OPEN_WEATHER_MAP_LANGUAGE = "en";
+String OPEN_WEATHER_MAP_LANGUAGE = "de";
 const uint8_t MAX_FORECASTS = 10;
 
 // Adjust according to your language
@@ -79,7 +81,18 @@ bool IS_STYLE_12HR = false;
 // #define NTP_SERVERS "us.pool.ntp.org", "time.nist.gov", "pool.ntp.org"
 
 
+static const uint8_t D0   = 16;
 
+static const uint8_t D1   = 5;
+static const uint8_t D2   = 4;
+static const uint8_t D3   = 0;
+static const uint8_t D4   = 2;
+static const uint8_t D5   = 14;
+static const uint8_t D6   = 12;
+static const uint8_t D7   = 13;
+static const uint8_t D8   = 15;
+static const uint8_t D9   = 3;
+static const uint8_t D10  = 1;
 // Pins for the ILI9341
 #define TFT_DC D2
 #define TFT_CS D1
